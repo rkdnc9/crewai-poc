@@ -88,11 +88,12 @@ def create_good_panel() -> PanelData:
     """Create a good panel that passes all checks."""
     studs = [
         Stud(stud_id="S1", position_mm=0, width_mm=89, depth_mm=89),
-        Stud(stud_id="S2", position_mm=406, width_mm=89, depth_mm=89),
-        Stud(stud_id="S3", position_mm=812, width_mm=89, depth_mm=89),
-        Stud(stud_id="S4", position_mm=1218, width_mm=89, depth_mm=89),
-        Stud(stud_id="S5", position_mm=1624, width_mm=89, depth_mm=89),
-        Stud(stud_id="S6", position_mm=2030, width_mm=89, depth_mm=89),
+        Stud(stud_id="S2", position_mm=400, width_mm=89, depth_mm=89),
+        Stud(stud_id="S3", position_mm=800, width_mm=89, depth_mm=89),
+        Stud(stud_id="S4", position_mm=1200, width_mm=89, depth_mm=89),
+        Stud(stud_id="S5", position_mm=1600, width_mm=89, depth_mm=89),
+        Stud(stud_id="S6", position_mm=2000, width_mm=89, depth_mm=89),
+        Stud(stud_id="S7", position_mm=2400, width_mm=89, depth_mm=89),
     ]
     
     openings = [
@@ -138,8 +139,8 @@ def create_bad_panel() -> PanelData:
             position_mm=50,
             width_mm=762,
             height_mm=1200,
-            has_jack_studs=True,
-            has_header=True,
+            has_jack_studs=False,
+            has_header=False,
             is_corner=True
         )
     ]
@@ -251,22 +252,37 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     try:
         # The crew_result may contain JSON output from LLM task
         import re
+        
         json_match = re.search(r'\{[\s\S]*"violations"[\s\S]*\}', crew_output)
         if json_match:
             llm_data = json.loads(json_match.group(0))
+            
+            # Handle nested report structure if present
+            if "report" in llm_data and "violations" in llm_data["report"]:
+                violations = llm_data["report"]["violations"]
+            elif "violations" in llm_data:
+                violations = llm_data["violations"]
+            else:
+                violations = []
+            
             llm_recommendations = {
                 "panel_id": panel.panel_id,
                 "panel_name": panel.name,
-                "violations_with_remediation": llm_data.get("violations", []),
-                "design_concerns": llm_data.get("design_concerns", []),
-                "needs_engineer_review": llm_data.get("needs_engineer_review", False),
-                "summary": llm_data.get("summary", llm_data.get("analysis_summary", ""))
+                "violations_with_remediation": violations,
+                "design_concerns": llm_data.get("design_concerns", llm_data.get("report", {}).get("design_concerns", [])),
+                "needs_engineer_review": any(
+                    v.get("remediation", {}).get("requires_engineer_approval", False) or
+                    v.get("recommendations", {}).get("requires_engineer_approval", False)
+                    for v in violations
+                ),
+                "summary": llm_data.get("summary", llm_data.get("executive_summary", llm_data.get("report", {}).get("executive_summary", "")))
             }
     except (json.JSONDecodeError, AttributeError, KeyError) as e:
         print(f"Note: Could not parse LLM recommendations from crew output: {e}")
     
-    # Save LLM recommendations to JSON file if available
-    if llm_recommendations:
+    # Save LLM recommendations to JSON file ONLY if there are actual violations
+    recommendations_file = None
+    if combined_violations and llm_recommendations:
         recommendations_file = output_dir / f"{panel.panel_id.lower()}_remediation.json"
         with open(recommendations_file, 'w', encoding='utf-8') as f:
             json.dump(llm_recommendations, f, indent=2)
@@ -288,13 +304,29 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     from tools.svg_annotator import annotate_svg_with_crew
     annotated_svg_path = annotate_svg_with_crew(str(output_file), combined_violations)
     
+    # Generate fixed panel ONLY if there are actual violations detected
+    fixed_svg_path = None
+    if combined_violations and llm_recommendations and llm_recommendations.get('violations_with_remediation'):
+        from tools.remediation_applier import create_fixed_visualization
+        fixed_output = output_dir / f"{panel.panel_id.lower()}_fixed.svg"
+        try:
+            fixed_svg_path = create_fixed_visualization(
+                panel,
+                llm_recommendations,
+                str(fixed_output)
+            )
+            print(f"✅ Generated fixed panel visualization: {fixed_svg_path}")
+        except Exception as e:
+            print(f"Note: Could not generate fixed panel: {e}")
+    
     return {
         "panel_id": panel.panel_id,
         "panel_name": panel.name,
         "crew_output": crew_output,
         "output_file": annotated_svg_path,
         "violations_found": len(combined_violations),
-        "remediation_file": str(recommendations_file) if llm_recommendations else None
+        "remediation_file": str(recommendations_file) if llm_recommendations else None,
+        "fixed_svg": fixed_svg_path
     }
 
 
@@ -349,7 +381,7 @@ def demo():
     print("  1. QC Inspector → Run deterministic rules")
     print("  2. Building Code Consultant → Expert contextual analysis")
     print("  3. Report Generator → Synthesize findings into report")
-    print("  4. Visualization Specialist → Create visual diagrams")
+    print("  Post-processing → Visualization and remediation (SVG generation)")
     print("\nKey Points:")
     print("  ✓ NO work happens outside CrewAI")
     print("  ✓ Agents collaborate within the framework")
@@ -363,9 +395,13 @@ def demo():
         print(f"  • SVG: {r['output_file']}")
         if r.get('remediation_file'):
             print(f"  • Remediation: {r['remediation_file']}")
+        if r.get('fixed_svg'):
+            print(f"  • Fixed SVG: {r['fixed_svg']}")
     print("\nTo view files:")
     print("  open demo_output/*.svg")
     print("  cat demo_output/*_remediation.json")
+    print("\nTo compare before/after:")
+    print("  open demo_output/bad_panel_001.svg demo_output/bad_panel_001_fixed.svg")
     print("="*70 + "\n")
 
 

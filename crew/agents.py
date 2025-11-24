@@ -81,3 +81,20 @@ def create_visualizer_agent() -> Agent:
         verbose=False,
         allow_delegation=False
     )
+
+
+def create_remediation_specialist_agent() -> Agent:
+    """Apply remediation fixes to create corrected panel"""
+    return Agent(
+        role="Remediation Specialist",
+        goal="Apply remediation recommendations to generate fixed panel visualizations",
+        backstory=(
+            "You are a construction planning specialist who translates remediation "
+            "recommendations into concrete fixes. You understand how to apply structural "
+            "changes like adding jack studs, headers, and bracing to wall panels. You "
+            "create visual representations of corrected panels to show stakeholders "
+            "what the final result will look like after remediation."
+        ),
+        verbose=False,
+        allow_delegation=False
+    )

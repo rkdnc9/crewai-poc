@@ -13,16 +13,17 @@ This project demonstrates how multiple agents within CrewAI can address both asp
 
 ## Architecture
 
-The system uses four specialized agents orchestrated through CrewAI. Each agent handles a specific responsibility:
+The system uses five specialized agents orchestrated through CrewAI. Each agent handles a specific responsibility:
 
 ### Agent Responsibilities
 
-| Agent            | Role                     | Input                         | Output                          |
-| ---------------- | ------------------------ | ----------------------------- | ------------------------------- |
-| QC Inspector     | Building code compliance | Panel data + rules            | Deterministic violations        |
-| Code Consultant  | Expert judgment          | Panel data + contextual rules | Violations with remediation     |
-| Report Generator | Synthesis                | All violations                | Comprehensive report            |
-| Visualization    | Diagram creation         | Panel + violations            | Base SVG (Python) + annotations |
+| Agent                  | Role                     | Input                         | Output                          |
+| ---------------------- | ------------------------ | ----------------------------- | ------------------------------- |
+| QC Inspector           | Building code compliance | Panel data + rules            | Deterministic violations        |
+| Code Consultant        | Expert judgment          | Panel data + contextual rules | Violations with remediation     |
+| Report Generator       | Synthesis                | All violations                | Comprehensive report            |
+| Visualization          | Diagram creation         | Panel + violations            | Base SVG (Python) + annotations |
+| Remediation Specialist | Fix application          | Panel + remediation plans     | Fixed panel visualization       |
 
 ## Getting Started
 
@@ -70,6 +71,17 @@ For each violation identified, the LLM generates actionable remediation plans in
 
 Remediation recommendations are saved as JSON files in `demo_output/` for downstream integration.
 
+### Remediation Visualization
+
+The Remediation Specialist agent applies the recommended fixes to generate a "fixed" panel visualization. This shows what the panel will look like after remediation is complete, with all violations addressed. The fixed panels display:
+
+- Green studs and borders indicating compliance
+- Added jack studs and headers on windows
+- Diagonal bracing for seismic requirements
+- Status confirmation that all checks pass
+
+This before/after comparison helps stakeholders visualize the impact of remediation work.
+
 ## Workflow
 
 ```mermaid
@@ -116,6 +128,7 @@ crew/
 tools/
   ├─ deterministic_checker.py   # Rule validation + context helpers
   ├─ llm_rule_checker.py        # LLM analysis (optional)
+  ├─ remediation_applier.py     # Apply fixes to generate corrected panels
   ├─ visualizer_tool.py         # SVG generation
   ├─ svg_annotator.py           # Deterministic annotations
   └─ crew_tools.py              # Tool utilities
@@ -129,7 +142,8 @@ demo_output/
   ├─ good_panel_001.svg         # Generated visualizations
   ├─ good_panel_001_remediation.json
   ├─ bad_panel_001.svg
-  └─ bad_panel_001_remediation.json
+  ├─ bad_panel_001_remediation.json
+  └─ bad_panel_001_fixed.svg    # Fixed panel after remediation
 ```
 
 ## Implementation Notes
@@ -151,8 +165,9 @@ The Code Consultant agent loads `config/contextual_rules.md` at initialization, 
 4. `visualizer_tool.create_panel_visualization` draws a clean panel
 5. `svg_annotator.annotate_svg_with_crew` appends violation summaries deterministically
 6. Remediation recommendations are saved to `demo_output/` as JSON files
+7. Remediation Specialist applies fixes using `remediation_applier.py` to generate fixed panel SVG
 
-All generated SVGs open in any standards-compliant viewer; "good" panels render with green studs and a pass footer, while "bad" panels show red studs and textual violation summaries.
+All generated SVGs open in any standards-compliant viewer; "good" panels render with green studs and a pass footer, while "bad" panels show red studs and textual violation summaries. Fixed panels display in green with structural fixes applied.
 
 ## Technologies
 
