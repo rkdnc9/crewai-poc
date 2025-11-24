@@ -1,26 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 832.0 638.0" width="832" height="638">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 832.0 708.0" width="832" height="708">
   <defs>
     <style>
       text { font-family: Arial, sans-serif; }
       .panel-bg { fill: #F5F5F5; stroke: #2C3E50; stroke-width: 2; }
-      .stud { fill: #BDC3C7; stroke: #7F8C8D; stroke-width: 1; }
-      .window { fill: #AED6F1; stroke: #3498DB; stroke-width: 2; }
-      .label { font-size: 14px; font-weight: bold; }
+      .stud { stroke: #7F8C8D; stroke-width: 1; }
+      .stud-good { fill: #BDC3C7; }
+      .stud-bad { fill: #FF6B6B; }
+      .opening { stroke: #3498DB; stroke-width: 2; }
+      .opening-good { fill: #AED6F1; }
+      .opening-warn { fill: #FFD700; }
+      .label { font-size: 12px; font-weight: bold; }
       .dimension { font-size: 11px; fill: #34495E; }
+      .violation-text { font-size: 9px; fill: #000; }
     </style>
   </defs>
   <rect class="panel-bg" x="50" y="50" width="732.0" height="488.0"/>
-  <rect class="stud" x="150.77142857142857" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="stud" x="255.34285714285713" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="stud" x="359.9142857142857" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="stud" x="464.48571428571427" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="stud" x="569.0571428571429" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="stud" x="673.6285714285715" y="50" width="7.6000000000000005" height="488.0"/>
-  <rect class="window" x="150" y="254.0" width="152.4" height="80.0"/>
-  <text class="label" text-anchor="middle" x="416.0" y="30">BAD_PANEL_001</text>
-  <text class="dimension" text-anchor="middle" x="416.0" y="568.0">3660mm</text>
-  <text class="dimension" text-anchor="middle" x="30" y="294.0" transform="rotate(-90 30 294.0)">2440mm</text>
-  <text class="dimension" text-anchor="middle" x="416.0" y="598.0">Seismic Zone: 4</text>
-  <text class="dimension" text-anchor="middle" x="416.0" y="613.0">⚠ Corner Window</text>
+  <rect class="stud stud-bad" x="41.1" y="50" width="17.8" height="488.0"/>
+  <rect class="stud stud-bad" x="122.29999999999998" y="50" width="17.8" height="488.0"/>
+  <rect class="stud stud-bad" x="203.5" y="50" width="17.8" height="488.0"/>
+  <rect class="stud stud-bad" x="284.70000000000005" y="50" width="17.8" height="488.0"/>
+  <rect class="stud stud-bad" x="365.90000000000003" y="50" width="17.8" height="488.0"/>
+  <rect class="stud stud-bad" x="447.1" y="50" width="17.8" height="488.0"/>
+  <rect class="opening opening-warn" x="60.0" y="174.0" width="152.4" height="240.0"/>
+  <text class="label" x="136.2" y="298.0" text-anchor="middle">Window 762mm</text>
+  <text class="label" x="416.0" y="30" text-anchor="middle">Bad Panel - Corner Window, High Seismic Zone</text>
+  <text class="dimension" x="416.0" y="568.0" text-anchor="middle">3660mm</text>
+  <text class="dimension" x="35" y="294.0" text-anchor="end" transform="rotate(-90 35 294.0)">2440mm</text>
+  <text class="label" x="60" y="588.0" fill="#C0392B">Violations Found:</text>
+  <text class="violation-text" x="60" y="603.0" font-weight="bold">Det:</text>
+  <text class="violation-text" x="70" y="615.0">• Corner window in high seismic zone requires e</text>
+  <text class="violation-text" x="70" y="627.0">• Stress concentration at corner stud junction</text>
 </svg>
