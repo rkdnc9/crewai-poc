@@ -1,0 +1,11 @@
+{
+  "context_aware_exceptions": [
+    {
+      "name": "Corner Window in Seismic Zone",
+      "rule_id": "WINDOW_SUPPORT_001",
+      "condition": "Window is in corner position AND seismic_zone >= 3",
+      "llm_instruction": "Evaluate if additional lateral bracing beyond standard jack studs is needed for seismic loads",
+      "severity_boost": "high"
+    }
+  ]
+}

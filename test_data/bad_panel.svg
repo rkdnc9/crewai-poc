@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 832.0 638.0" width="832" height="638">
+  <defs>
+    <style>
+      text { font-family: Arial, sans-serif; }
+      .panel-bg { fill: #F5F5F5; stroke: #2C3E50; stroke-width: 2; }
+      .stud { fill: #BDC3C7; stroke: #7F8C8D; stroke-width: 1; }
+      .window { fill: #AED6F1; stroke: #3498DB; stroke-width: 2; }
+      .label { font-size: 14px; font-weight: bold; }
+      .dimension { font-size: 11px; fill: #34495E; }
+    </style>
+  </defs>
+  <rect class="panel-bg" x="50" y="50" width="732.0" height="488.0"/>
+  <rect class="stud" x="150.77142857142857" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="stud" x="255.34285714285713" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="stud" x="359.9142857142857" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="stud" x="464.48571428571427" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="stud" x="569.0571428571429" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="stud" x="673.6285714285715" y="50" width="7.6000000000000005" height="488.0"/>
+  <rect class="window" x="150" y="254.0" width="152.4" height="80.0"/>
+  <text class="label" text-anchor="middle" x="416.0" y="30">BAD_PANEL_001</text>
+  <text class="dimension" text-anchor="middle" x="416.0" y="568.0">3660mm</text>
+  <text class="dimension" text-anchor="middle" x="30" y="294.0" transform="rotate(-90 30 294.0)">2440mm</text>
+  <text class="dimension" text-anchor="middle" x="416.0" y="598.0">Seismic Zone: 4</text>
+  <text class="dimension" text-anchor="middle" x="416.0" y="613.0">⚠ Corner Window</text>
+</svg>

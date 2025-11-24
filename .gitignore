@@ -67,7 +67,7 @@ Thumbs.db
 .DS_Store
 
 # Results
-results/
+demo_output/
 
 # Claude
 .claude/
@@ -76,4 +76,4 @@ results/
 DEMO.md
 
 # Project Summary
-PROJECT_SUMMARY.md
+PROJECT_SUMMARY.mddemo_output/
