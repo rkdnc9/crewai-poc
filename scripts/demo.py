@@ -245,6 +245,33 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     contextual_violation_dicts = [v.dict() for v in contextual_violations]
     combined_violations = det_violations + contextual_violation_dicts
 
+    # Extract LLM analysis with remediation recommendations
+    # Try to parse JSON from crew_result to get LLM recommendations
+    llm_recommendations = None
+    try:
+        # The crew_result may contain JSON output from LLM task
+        import re
+        json_match = re.search(r'\{[\s\S]*"violations"[\s\S]*\}', crew_output)
+        if json_match:
+            llm_data = json.loads(json_match.group(0))
+            llm_recommendations = {
+                "panel_id": panel.panel_id,
+                "panel_name": panel.name,
+                "violations_with_remediation": llm_data.get("violations", []),
+                "design_concerns": llm_data.get("design_concerns", []),
+                "needs_engineer_review": llm_data.get("needs_engineer_review", False),
+                "summary": llm_data.get("summary", llm_data.get("analysis_summary", ""))
+            }
+    except (json.JSONDecodeError, AttributeError, KeyError) as e:
+        print(f"Note: Could not parse LLM recommendations from crew output: {e}")
+    
+    # Save LLM recommendations to JSON file if available
+    if llm_recommendations:
+        recommendations_file = output_dir / f"{panel.panel_id.lower()}_remediation.json"
+        with open(recommendations_file, 'w', encoding='utf-8') as f:
+            json.dump(llm_recommendations, f, indent=2)
+        print(f"💾 Saved remediation recommendations to: {recommendations_file}")
+
     # NOW create visualization with actual violations
     output_file = output_dir / f"{panel.panel_id.lower()}.svg"
     
@@ -266,7 +293,8 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
         "panel_name": panel.name,
         "crew_output": crew_output,
         "output_file": annotated_svg_path,
-        "violations_found": len(combined_violations)
+        "violations_found": len(combined_violations),
+        "remediation_file": str(recommendations_file) if llm_recommendations else None
     }
 
 
@@ -332,9 +360,12 @@ def demo():
         print(f"  {r['panel_name']}: {r['violations_found']} violations found")
     print("\nOutput Files:")
     for r in results:
-        print(f"  • {r['output_file']}")
-    print("\nTo view SVG files:")
+        print(f"  • SVG: {r['output_file']}")
+        if r.get('remediation_file'):
+            print(f"  • Remediation: {r['remediation_file']}")
+    print("\nTo view files:")
     print("  open demo_output/*.svg")
+    print("  cat demo_output/*_remediation.json")
     print("="*70 + "\n")
 
 

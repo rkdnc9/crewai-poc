@@ -9,7 +9,7 @@ Building code compliance has two aspects:
 - **Deterministic Rules**: Explicit requirements (e.g., "studs must be spaced 16\" apart")
 - **Contextual Analysis**: Requirements dependent on context (e.g., seismic zone considerations)
 
-This project demonstrates how multiple agents within CrewAI can address both aspects collaboratively.
+This project demonstrates how multiple agents within CrewAI can address both aspects collaboratively. The LLM-based agent applies natural language rules from markdown files and generates detailed remediation plans for identified violations.
 
 ## Architecture
 
@@ -17,12 +17,12 @@ The system uses four specialized agents orchestrated through CrewAI. Each agent 
 
 ### Agent Responsibilities
 
-| Agent            | Role                     | Input                              | Output                          |
-| ---------------- | ------------------------ | ---------------------------------- | ------------------------------- |
-| QC Inspector     | Building code compliance | Panel data + rules                 | Deterministic violations        |
-| Code Consultant  | Expert judgment          | Panel data + deterministic results | Context-dependent violations    |
-| Report Generator | Synthesis                | All violations                     | Comprehensive report            |
-| Visualization    | Diagram creation         | Panel + violations                 | Base SVG (Python) + annotations |
+| Agent            | Role                     | Input                         | Output                          |
+| ---------------- | ------------------------ | ----------------------------- | ------------------------------- |
+| QC Inspector     | Building code compliance | Panel data + rules            | Deterministic violations        |
+| Code Consultant  | Expert judgment          | Panel data + contextual rules | Violations with remediation     |
+| Report Generator | Synthesis                | All violations                | Comprehensive report            |
+| Visualization    | Diagram creation         | Panel + violations            | Base SVG (Python) + annotations |
 
 ## Getting Started
 
@@ -47,7 +47,28 @@ export OPENAI_API_KEY="your-key-here"
 ```bash
 # Execute the workflow (generates SVGs in demo_output/)
 uv run scripts/demo.py
+
+# View remediation recommendations
+uv run python scripts/view_remediation.py demo_output/*_remediation.json
 ```
+
+## Key Features
+
+### Natural Language Rules
+
+The Code Consultant agent processes human-readable inspection guidelines from `config/contextual_rules.md` alongside structured JSON rules. This allows the system to interpret contextual requirements that are difficult to encode as deterministic rules.
+
+### Remediation Plans
+
+For each violation identified, the LLM generates actionable remediation plans including:
+
+- Step-by-step fix instructions
+- Required materials and tools
+- Time and cost estimates
+- Safety considerations
+- Engineer approval requirements
+
+Remediation recommendations are saved as JSON files in `demo_output/` for downstream integration.
 
 ## Workflow
 
@@ -101,11 +122,14 @@ tools/
 
 config/
   ├─ building_codes.json        # Rule definitions
+  ├─ contextual_rules.md        # Natural language inspection rules
   └─ exceptions.json            # Context rules
 
 demo_output/
-  ├─ good_panel.svg             # Generated visualizations
-  └─ bad_panel.svg
+  ├─ good_panel_001.svg         # Generated visualizations
+  ├─ good_panel_001_remediation.json
+  ├─ bad_panel_001.svg
+  └─ bad_panel_001_remediation.json
 ```
 
 ## Implementation Notes
@@ -115,19 +139,24 @@ demo_output/
 - Deterministic, contextual, and reporting agents run inside a single `Crew`
 - Visualization now happens in pure Python after `crew.kickoff()` to guarantee valid SVG output
 
+### LLM Integration
+
+The Code Consultant agent loads `config/contextual_rules.md` at initialization, enabling it to apply natural language inspection guidelines alongside structured rules. The agent generates detailed remediation plans for each violation, which are saved to JSON files for downstream processing.
+
 ### Violation + Visualization Flow
 
 1. QC Inspector runs rules engineered in `deterministic_checker.py`
-2. Contextual helper (`check_contextual_violations`) evaluates seismic/corner scenarios without LLM dependency
+2. Code Consultant evaluates contextual scenarios using natural language rules and generates remediation plans
 3. Crew synthesizes the narrative output
 4. `visualizer_tool.create_panel_visualization` draws a clean panel
 5. `svg_annotator.annotate_svg_with_crew` appends violation summaries deterministically
+6. Remediation recommendations are saved to `demo_output/` as JSON files
 
-All generated SVGs open in any standards-compliant viewer; “good” panels render with green studs and a ✅ footer, while “bad” panels show red studs and textual violation summaries.
+All generated SVGs open in any standards-compliant viewer; "good" panels render with green studs and a pass footer, while "bad" panels show red studs and textual violation summaries.
 
 ## Technologies
 
 - **CrewAI** - Multi-agent orchestration
-- **Claude** - LLM reasoning
+- **OpenAI GPT-3.5-turbo** - LLM reasoning and remediation generation
 - **Pydantic v2** - Type validation
 - **uv** - Package management

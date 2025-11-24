@@ -34,6 +34,8 @@
         return 1
 
     try:
+        import json
+        from pathlib import Path
         from tools.ifc_parser_tool import parse_ifc_file_to_panel_data
         from tools.deterministic_checker import run_deterministic_checks
         from tools.llm_rule_checker import LLMRuleChecker
@@ -41,27 +43,73 @@
 
         # Parse IFC file
         panel_data = parse_ifc_file_to_panel_data(args.ifc)
+        panel_dict = panel_data.dict() if hasattr(panel_data, 'dict') else panel_data
+
+        # Load exceptions for LLM analysis
+        exceptions_path = Path(__file__).parent / "config" / "exceptions.json"
+        with open(exceptions_path) as f:
+            exceptions = json.load(f)
 
         # Run deterministic checks
-        det_result = run_deterministic_checks(panel_data)
+        rules_path = Path(__file__).parent / "config" / "building_codes.json"
+        with open(rules_path) as f:
+            rules = json.load(f)
+        det_result = run_deterministic_checks(panel_data, rules)
 
-        # Run LLM analysis
+        # Run LLM analysis with remediation
         llm_checker = LLMRuleChecker()
-        llm_result = llm_checker.analyze(panel_data)
+        llm_result = llm_checker.analyze(panel_dict, det_result.to_dict(), exceptions)
 
-        # Merge results
-        merger = ViolationMerger()
-        final_result = merger.merge(det_result, llm_result)
+        # Save remediation recommendations to demo_output
+        output_dir = Path("demo_output")
+        output_dir.mkdir(exist_ok=True)
+        
+        panel_id = panel_dict.get('panel_id', 'panel').lower()
+        remediation_file = output_dir / f"{panel_id}_remediation.json"
+        
+        remediation_data = {
+            "panel_id": panel_dict.get('panel_id'),
+            "ifc_file": args.ifc,
+            "violations_with_remediation": llm_result.get('additional_violations', []),
+            "design_concerns": llm_result.get('design_concerns', []),
+            "needs_engineer_review": llm_result.get('needs_engineer_review', False),
+            "summary": llm_result.get('summary', 'Analysis complete')
+        }
+        
+        with open(remediation_file, 'w', encoding='utf-8') as f:
+            json.dump(remediation_data, f, indent=2)
 
         # Print results
         print("\n" + "="*70)
         print("QUALITY CONTROL REPORT")
         print("="*70)
         print(f"IFC File: {args.ifc}")
-        print(f"Total Violations: {len(final_result.all_violations)}")
-        if final_result.all_violations:
-            for v in final_result.all_violations:
-                print(f"  - {v.description} (severity: {v.severity})")
+        print(f"Panel ID: {panel_dict.get('panel_id')}")
+        print(f"Deterministic Violations: {len(det_result.violations)}")
+        print(f"LLM Additional Violations: {len(llm_result.get('additional_violations', []))}")
+        
+        # Display violations with remediation
+        llm_violations = llm_result.get('additional_violations', [])
+        if llm_violations:
+            print("\n" + "-"*70)
+            print("VIOLATIONS WITH REMEDIATION PLANS:")
+            print("-"*70)
+            for v in llm_violations:
+                print(f"\n🔴 {v.get('reason', 'Unknown violation')}")
+                print(f"   Severity: {v.get('severity', 'unknown').upper()}")
+                remediation = v.get('remediation', {})
+                if remediation:
+                    print(f"   Estimated Effort: {remediation.get('estimated_effort', 'N/A')}")
+                    print(f"   Cost Impact: {remediation.get('cost_impact', 'N/A')}")
+                    print(f"   Engineer Approval Required: {remediation.get('requires_engineer_approval', False)}")
+                    steps = remediation.get('steps', [])
+                    if steps:
+                        print(f"   Fix Steps:")
+                        for step in steps:
+                            print(f"     {step}")
+        
+        print("\n" + "="*70)
+        print(f"💾 Remediation report saved to: {remediation_file}")
         print("="*70 + "\n")
 
         return 0
