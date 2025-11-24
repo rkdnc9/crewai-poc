@@ -63,10 +63,13 @@ def create_panel_visualization(
         all_violations.extend(llm_violations)
     has_violations = bool(all_violations)
     
+    # Calculate extra height needed for annotations (only for violations)
+    extra_height = 120 if has_violations else 60
+    
     # Start SVG
     svg_lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width + margin*2} {height + margin*2 + (120 if has_violations else 80)}" width="{int(width + margin*2)}" height="{int(height + margin*2 + (120 if has_violations else 80))}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width + margin*2} {height + margin*2 + extra_height}" width="{int(width + margin*2)}" height="{int(height + margin*2 + extra_height)}">',
         '  <defs>',
         '    <style>',
         '      text { font-family: Arial, sans-serif; }',
@@ -126,7 +129,7 @@ def create_panel_visualization(
     dim_y2 = margin + height / 2
     svg_lines.append(f'  <text class="dimension" x="{dim_x2}" y="{dim_y2}" text-anchor="end" transform="rotate(-90 {dim_x2} {dim_y2})">{panel_data.height_mm:.0f}mm</text>')
     
-    # Add violation summary
+    # Add violation summary or clean status
     if has_violations:
         violation_y = margin + height + 50
         svg_lines.append(f'  <text class="label" x="{margin + 10}" y="{violation_y}" fill="#C0392B">Violations Found:</text>')
@@ -158,10 +161,7 @@ def create_panel_visualization(
             if len(llm_violations) > 3:
                 line_y += 12
                 svg_lines.append(f'  <text class="violation-text" x="{margin + 20}" y="{line_y}">... +{len(llm_violations) - 3} more</text>')
-    else:
-        # Show clean status
-        status_y = margin + height + 50
-        svg_lines.append(f'  <text class="label" x="{margin + width/2}" y="{status_y}" text-anchor="middle" fill="#27AE60">✅ No violations found</text>')
+    # No annotation for passes - keep it clean
     
     svg_lines.append('</svg>')
     
