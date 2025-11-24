@@ -88,21 +88,32 @@ class RemediationApplier:
             List of bracing elements to draw (diagonal lines, etc.)
         """
         bracing_elements = []
-        violations = remediation_data.get('violations_with_remediation', [])
         
-        for violation in violations:
-            reason = violation.get('reason', '').lower()
-            
-            if 'bracing' in reason or 'seismic' in reason:
-                # Find corner windows
-                for opening in panel_data.openings:
-                    if opening.is_corner or opening.position_mm < 500:  # Within 500mm of edge
-                        bracing_elements.append({
-                            'type': 'diagonal_brace',
-                            'opening_id': opening.opening_id,
-                            'position_mm': opening.position_mm,
-                            'width_mm': opening.width_mm
-                        })
+        # Check if any violations mention bracing/seismic
+        violations = remediation_data.get('violations_with_remediation', [])
+        has_bracing_violation = any(
+            'bracing' in v.get('reason', '').lower() or 
+            'seismic' in v.get('reason', '').lower()
+            for v in violations
+        )
+        
+        # Also check for corner windows in high seismic zones (should always have bracing)
+        is_high_seismic = panel_data.seismic_zone >= 3
+        has_corner_window = any(
+            opening.is_corner or opening.position_mm < 500  # Within 500mm of edge
+            for opening in panel_data.openings
+        )
+        
+        # Add bracing if violation detected OR if it's a corner window in high seismic zone
+        if has_bracing_violation or (is_high_seismic and has_corner_window):
+            for opening in panel_data.openings:
+                if opening.is_corner or opening.position_mm < 500:  # Within 500mm of edge
+                    bracing_elements.append({
+                        'type': 'diagonal_brace',
+                        'opening_id': opening.opening_id,
+                        'position_mm': opening.position_mm,
+                        'width_mm': opening.width_mm
+                    })
         
         return bracing_elements
 
@@ -201,6 +212,27 @@ def create_fixed_visualization(
     summary_y = status_y + 25
     num_fixes = len(remediation_data.get('violations_with_remediation', []))
     svg_lines.append(f'  <text class="label" x="{margin}" y="{summary_y}" font-size="11px">{num_fixes} violations fixed</text>')
+    
+    # Add legend
+    legend_x = width + margin - 200
+    legend_y = margin + 20
+    svg_lines.append(f'  <text class="label" x="{legend_x}" y="{legend_y}" font-size="11px">Legend:</text>')
+    
+    # Green studs/support
+    legend_y += 20
+    svg_lines.append(f'  <rect x="{legend_x}" y="{legend_y - 10}" width="15" height="15" fill="#A9DFBF" stroke="#27AE60"/>')
+    svg_lines.append(f'  <text x="{legend_x + 20}" y="{legend_y}" font-size="10px" fill="#333">Studs / Support</text>')
+    
+    # Blue window
+    legend_y += 20
+    svg_lines.append(f'  <rect x="{legend_x}" y="{legend_y - 10}" width="15" height="15" fill="#AED6F1" stroke="#3498DB" stroke-width="2"/>')
+    svg_lines.append(f'  <text x="{legend_x + 20}" y="{legend_y}" font-size="10px" fill="#333">Window Opening</text>')
+    
+    # Orange bracing
+    if bracing_elements:
+        legend_y += 20
+        svg_lines.append(f'  <line x1="{legend_x}" y1="{legend_y - 5}" x2="{legend_x + 15}" y2="{legend_y - 5}" stroke="#E67E22" stroke-width="3" stroke-dasharray="5,5"/>')
+        svg_lines.append(f'  <text x="{legend_x + 20}" y="{legend_y}" font-size="10px" fill="#333">Diagonal Bracing</text>')
     
     svg_lines.append('</svg>')
     
