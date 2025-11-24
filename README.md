@@ -1,34 +1,23 @@
-# Wall Panel Quality Control with CrewAI
+# Wall Panel Quality Control - CrewAI Orchestration
 
-A proof-of-concept exploring agent-based orchestration for building code compliance assessment. This project examines how deterministic rule-based checks and contextual expert analysis can be combined to evaluate wall panel designs.
+**Demonstrating how CrewAI orchestrates comprehensive wall panel QC with multiple specialized agents.**
 
-## Motivation
+This is a proof-of-concept showing how CrewAI can coordinate deterministic rule-based checks with LLM-based contextual analysis for building wall panel quality control.
 
-Building code compliance has two dimensions:
+## The Problem
 
-1. **Explicit Rules**: Deterministic checks (e.g., stud spacing, window support requirements) that follow clear specifications
-2. **Contextual Considerations**: Design decisions that require domain expertise and judgment (e.g., seismic resilience for corner placements)
+Building codes have two types of requirements:
 
-Rule-based systems excel at the former but struggle with the latter. This project explores using CrewAI to coordinate both types of analysis through specialized agents.
+- **Explicit Rules**: "Window must have jack studs" - deterministic checks work perfectly
+- **Context-Dependent Issues**: "Will this corner window survive seismic loads?" - requires expert reasoning
 
-## Overview
+Traditional rule-based systems catch one; this CrewAI system catches both through agent collaboration.
 
-The system orchestrates four agents to analyze IFC (Industry Foundation Classes) wall panel data:
+## The CrewAI Solution
 
-- **QC Inspector**: Applies deterministic rule-based checks against building codes
-- **Code Consultant**: Provides contextual analysis for design edge cases
-- **Report Generator**: Synthesizes findings into structured output
-- **Visualization Specialist**: Generates visual representations of violations
+Instead of sequential script execution, we use **CrewAI to orchestrate 4 specialized agents**:
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/) package manager
-- OpenAI API key
-
-### Setup
+### Agent Architecture & Workflow
 
 ```bash
 git clone <repository-url>
@@ -36,25 +25,184 @@ cd crewai-poc
 uv sync
 export OPENAI_API_KEY="your-api-key"
 ```
-
-### Running Analysis
-
-```bash
-uv run scripts/demo.py
+Panel Input Data
+      ↓
+╔════════════════════════════════════════════════════════════╗
+║                    CrewAI Crew Orchestration               ║
+╚════════════════════════════════════════════════════════════╝
+      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 1. QC Inspector Agent                                   │
+│    Role: Building code compliance expert               │
+│    Task: Run deterministic checks                      │
+│    Input: Panel data + building codes                 │
+│    Output: Violations list with rule references        │
+│    • Stud spacing validation                           │
+│    • Window/door support verification                 │
+│    • MEP clearance checks                             │
+└─────────────────────────────────────────────────────────┘
+      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 2. Senior Building Code Consultant Agent                │
+│    Role: Expert design reviewer                        │
+│    Task: Contextual & edge case analysis              │
+│    Input: Panel data + deterministic results          │
+│    Output: Additional violations requiring judgment    │
+│    • Seismic zone considerations                      │
+│    • Corner placement risks                           │
+│    • Design intent analysis                           │
+│    • Context-dependent code rules                     │
+└─────────────────────────────────────────────────────────┘
+      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 3. Report Generator Agent                               │
+│    Role: Technical report writer                       │
+│    Task: Synthesize all findings                       │
+│    Input: Deterministic + LLM violations               │
+│    Output: Comprehensive QC report                     │
+│    • Executive summary                                │
+│    • All violations with reasons                      │
+│    • Recommendations & fixes                          │
+│    • Pass/fail/review status                          │
+└─────────────────────────────────────────────────────────┘
+      ↓
+┌─────────────────────────────────────────────────────────┐
+│ 4. Visualization Specialist Agent                       │
+│    Role: CAD visualization expert                      │
+│    Task: Create visual diagrams                        │
+│    Input: Panel + violations from all agents           │
+│    Output: SVG visualization with highlights           │
+│    • Color-coded components (green/yellow/red)         │
+│    • Violation annotations                             │
+│    • Visual summary of findings                        │
+└─────────────────────────────────────────────────────────┘
+      ↓
+Final QC Report + Visual Diagrams
 ```
 
-This processes test panels through the crew pipeline and generates reports and visualizations.
+## Key Design Principles
 
-## Architecture
+1. **Full CrewAI Orchestration**: All work happens within `crew.kickoff()` - no execution outside the crew framework
+2. **Agent Specialization**: Each agent has a specific expertise and role
+3. **Data Flow Through Crew**: Agents pass results to next agents via CrewAI's memory system
+4. **Traceability**: All findings are reasoned and explained by agents, not hardcoded
+5. **Extensibility**: Add new agents or tasks without changing core logic
 
-Agent orchestration occurs within `crew.kickoff()`. Each agent receives panel data and relevant context, performs its analysis, and passes results to subsequent agents. The system leverages CrewAI's memory management for inter-agent communication.
+---
 
-## Test Data
+## Quick Start
 
-Two example panels are provided:
+### Prerequisites
 
-- **good_panel.ifc**: Centered window, low seismic zone
-- **bad_panel.ifc**: Corner window, high seismic zone—passes deterministic checks but presents contextual concerns
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) package manager
+- OpenAI API key (set `OPENAI_API_KEY` environment variable)
+
+### Setup
+
+```bash
+# Clone and setup
+git clone https://github.com/yourusername/crewai-poc.git
+cd crewai-poc
+uv sync
+
+# Set your OpenAI API key
+export OPENAI_API_KEY="your-key-here"
+```
+
+### Run Demo
+
+```bash
+# See CrewAI orchestration in action
+uv run scripts/demo.py
+
+# Verify violations come from agents (not hardcoded)
+uv run verify_crew_orchestration.py
+
+# View generated SVG visualizations
+open demo_output/good_panel.svg
+open demo_output/bad_panel.svg
+```
+
+---
+
+## What Happens When You Run the Demo
+
+```
+┌──────────────────────────────────┐
+│ Demo Starts                      │
+│ Creates 2 test panels            │
+└────────────┬─────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ For Each Panel:                  │
+│ crew.kickoff()                   │
+│ ← ALL WORK HAPPENS HERE          │
+└────────────┬─────────────────────┘
+             ↓
+   ┌─────────────────────────┐
+   │ QC Inspector Agent      │ → Deterministic checks
+   └─────────────────────────┘
+             ↓
+   ┌─────────────────────────┐
+   │ Code Consultant Agent   │ → Contextual analysis
+   └─────────────────────────┘
+             ↓
+   ┌─────────────────────────┐
+   │ Report Generator Agent  │ → Synthesize findings
+   └─────────────────────────┘
+             ↓
+   ┌─────────────────────────┐
+   │ Visualization Agent     │ → Create SVG
+   └─────────────────────────┘
+             ↓
+┌──────────────────────────────────┐
+│ Output:                          │
+│ • Console logs of agent work     │
+│ • Comprehensive QC report        │
+│ • SVG visualizations             │
+└──────────────────────────────────┘
+```
+
+---
+
+## The Story You're Building
+
+### Why CrewAI for Quality Control?
+
+**Traditional Approach:**
+
+```
+Script 1 → Script 2 → Script 3 → Manual coordination ❌
+- Hard to maintain
+- Hard to scale
+- Hard to explain findings
+```
+
+**CrewAI Approach:**
+
+```
+4 Specialized Agents in Crew ✅
+- Easy to maintain (agents encapsulate expertise)
+- Easy to scale (add agents without core changes)
+- Easy to explain (see agent reasoning)
+```
+
+**For Wall Panel QC:** Demonstrates that real-world quality control requires multiple perspectives working together. CrewAI shows how to orchestrate those perspectives efficiently within a single framework.
+
+---
+
+## Test Scenarios
+
+### Good Panel
+
+- Centered window, low seismic zone
+- Passes all deterministic checks
+- **Expected:** ✅ No violations
+
+### Bad Panel
+
+- Corner window, high seismic zone (4)
 - Passes deterministic checks (has proper support)
 - **Expected:** ✅ Passes deterministic, ⚠️ Contextual risk flagged by consultant
 
