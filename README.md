@@ -17,12 +17,12 @@ The system uses four specialized agents orchestrated through CrewAI. Each agent 
 
 ### Agent Responsibilities
 
-| Agent | Role | Input | Output |
-|-------|------|-------|--------|
-| QC Inspector | Building code compliance | Panel data + rules | Deterministic violations |
-| Code Consultant | Expert judgment | Panel data + deterministic results | Context-dependent violations |
-| Report Generator | Synthesis | All violations | Comprehensive report |
-| Visualization | Diagram creation | Panel + violations | SVG visualization |
+| Agent            | Role                     | Input                              | Output                          |
+| ---------------- | ------------------------ | ---------------------------------- | ------------------------------- |
+| QC Inspector     | Building code compliance | Panel data + rules                 | Deterministic violations        |
+| Code Consultant  | Expert judgment          | Panel data + deterministic results | Context-dependent violations    |
+| Report Generator | Synthesis                | All violations                     | Comprehensive report            |
+| Visualization    | Diagram creation         | Panel + violations                 | Base SVG (Python) + annotations |
 
 ## Getting Started
 
@@ -30,7 +30,7 @@ The system uses four specialized agents orchestrated through CrewAI. Each agent 
 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/) package manager
-- OpenAI API key
+- API key for your CrewAI-compatible LLM (only required if you run the contextual analysis agent)
 
 ### Setup
 
@@ -38,17 +38,15 @@ The system uses four specialized agents orchestrated through CrewAI. Each agent 
 git clone <repository-url>
 cd crewai-poc
 uv sync
+# Only needed when running with an LLM-enabled agent
 export OPENAI_API_KEY="your-key-here"
 ```
 
 ### Running
 
 ```bash
-# Execute the workflow
+# Execute the workflow (generates SVGs in demo_output/)
 uv run scripts/demo.py
-
-# Verify agent-based violations (not hardcoded)
-uv run verify_crew_orchestration.py
 ```
 
 ## Workflow
@@ -75,14 +73,14 @@ graph TD
 ### Good Panel
 
 - Centered window, low seismic zone
-- Passes all rule checks
-- No violations expected
+- Passes all deterministic + contextual checks
+- SVG renders with green studs and ✅ status text
 
 ### Bad Panel
 
 - Corner window, high seismic zone
-- Passes rule checks (proper structural support)
-- Contextual analysis flags seismic risk
+- Deterministic checks flag missing support + spacing issues
+- Context rule adds seismic bracing violation, SVG shows red studs + summary text
 
 ## Project Structure
 
@@ -95,11 +93,11 @@ crew/
   └─ tasks.py                   # Task definitions
 
 tools/
-  ├─ deterministic_checker.py   # Rule validation
-  ├─ llm_rule_checker.py        # LLM analysis
+  ├─ deterministic_checker.py   # Rule validation + context helpers
+  ├─ llm_rule_checker.py        # LLM analysis (optional)
   ├─ visualizer_tool.py         # SVG generation
-  ├─ crew_tools.py              # Tool utilities
-  └─ output_parser.py           # Output parsing
+  ├─ svg_annotator.py           # Deterministic annotations
+  └─ crew_tools.py              # Tool utilities
 
 config/
   ├─ building_codes.json        # Rule definitions
@@ -114,20 +112,18 @@ demo_output/
 
 ### Agent Execution
 
-- All agents execute within `crew.kickoff()`
-- No logic outside the crew orchestration
-- Results passed through CrewAI's memory system
+- Deterministic, contextual, and reporting agents run inside a single `Crew`
+- Visualization now happens in pure Python after `crew.kickoff()` to guarantee valid SVG output
 
-### Violation Generation
+### Violation + Visualization Flow
 
-All violations originate from agent reasoning:
+1. QC Inspector runs rules engineered in `deterministic_checker.py`
+2. Contextual helper (`check_contextual_violations`) evaluates seismic/corner scenarios without LLM dependency
+3. Crew synthesizes the narrative output
+4. `visualizer_tool.create_panel_visualization` draws a clean panel
+5. `svg_annotator.annotate_svg_with_crew` appends violation summaries deterministically
 
-1. QC Inspector analyzes against building codes
-2. Code Consultant performs contextual analysis
-3. Results synthesized into comprehensive report
-4. Visualization agent creates annotated diagram
-
-No hardcoded violation lists.
+All generated SVGs open in any standards-compliant viewer; “good” panels render with green studs and a ✅ footer, while “bad” panels show red studs and textual violation summaries.
 
 ## Technologies
 
