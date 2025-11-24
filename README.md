@@ -19,6 +19,11 @@ Instead of sequential script execution, we use **CrewAI to orchestrate 4 special
 
 ### Agent Architecture & Workflow
 
+```bash
+git clone <repository-url>
+cd crewai-poc
+uv sync
+export OPENAI_API_KEY="your-api-key"
 ```
 Panel Input Data
       ↓
