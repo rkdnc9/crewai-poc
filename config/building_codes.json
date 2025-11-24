@@ -1,0 +1,60 @@
+{
+  "stud_spacing": {
+    "description": "Standard stud spacing requirements",
+    "rules": {
+      "standard_spacing_mm": 406.4,
+      "standard_spacing_inches": 16,
+      "max_spacing_mm": 609.6,
+      "max_spacing_inches": 24,
+      "min_spacing_mm": 304.8,
+      "min_spacing_inches": 12,
+      "tolerance_mm": 6.5,
+      "tolerance_inches": 0.26
+    }
+  },
+  "openings": {
+    "description": "Requirements for door and window openings",
+    "rules": {
+      "require_jack_studs": true,
+      "min_jack_studs_per_side": 1,
+      "require_header": true,
+      "header_min_depth_mm": 89,
+      "header_min_depth_inches": 3.5,
+      "king_stud_required": true,
+      "max_opening_width_single_jack_mm": 914.4,
+      "max_opening_width_single_jack_inches": 36
+    }
+  },
+  "ducts_and_services": {
+    "description": "Clearance requirements for MEP services",
+    "rules": {
+      "min_clearance_from_stud_mm": 25.4,
+      "min_clearance_from_stud_inches": 1,
+      "max_notch_depth_stud_pct": 25,
+      "max_hole_diameter_stud_pct": 40,
+      "min_distance_hole_to_edge_mm": 50.8,
+      "min_distance_hole_to_edge_inches": 2
+    }
+  },
+  "panel_dimensions": {
+    "description": "Overall panel constraints",
+    "rules": {
+      "max_height_mm": 3048,
+      "max_height_inches": 120,
+      "max_width_mm": 4876.8,
+      "max_width_inches": 192,
+      "min_wall_thickness_mm": 89,
+      "min_wall_thickness_inches": 3.5
+    }
+  },
+  "structural": {
+    "description": "Structural integrity requirements",
+    "rules": {
+      "min_end_stud_distance_mm": 38.1,
+      "min_end_stud_distance_inches": 1.5,
+      "double_top_plate_required": true,
+      "double_bottom_plate_required": false,
+      "blocking_required_above_8ft": true
+    }
+  }
+}
