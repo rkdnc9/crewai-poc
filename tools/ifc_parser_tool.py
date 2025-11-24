@@ -5,7 +5,7 @@ import json
 from typing import Dict, List, Any
 from crewai.tools import tool
 import ifcopenshell
-import numpy as np
+from tools.deterministic_checker import PanelData, Stud, Opening, Duct
 
 
 @tool("IFC Parser")
@@ -47,6 +47,125 @@ def parse_ifc_file(ifc_file_path: str) -> str:
             "status": "error",
             "message": f"Error parsing IFC file: {str(e)}"
         })
+
+
+def parse_ifc_file_to_panel_data(ifc_file_path: str) -> PanelData:
+    """
+    Parse IFC file and return structured PanelData object for deterministic checking.
+    
+    Args:
+        ifc_file_path: Path to the IFC file
+        
+    Returns:
+        PanelData object with parsed information
+    """
+    try:
+        ifc_file = ifcopenshell.open(ifc_file_path)
+        
+        # Extract first wall panel (in production, could handle multiple)
+        walls = ifc_file.by_type("IfcWall")
+        if not walls:
+            raise ValueError("No walls found in IFC file")
+        
+        wall = walls[0]
+        
+        # Extract panel metadata
+        panel_id = wall.GlobalId if hasattr(wall, 'GlobalId') else "PANEL_001"
+        panel_name = wall.Name if hasattr(wall, 'Name') else f"Panel_{panel_id}"
+        
+        # Extract properties from IFC
+        dimensions = _extract_dimensions(wall)
+        studs_data = _extract_studs_data(wall, ifc_file)
+        openings_data = _extract_openings_data(wall, ifc_file)
+        ducts_data = _extract_ducts_data(wall, ifc_file)
+        seismic_zone = _extract_seismic_zone(wall, ifc_file)
+        
+        # Create PanelData object
+        panel = PanelData(
+            panel_id=str(panel_id),
+            name=str(panel_name),
+            width_mm=dimensions.get('width_mm', 3660),
+            height_mm=dimensions.get('height_mm', 2440),
+            studs=studs_data,
+            openings=openings_data,
+            ducts=ducts_data,
+            seismic_zone=seismic_zone
+        )
+        
+        return panel
+        
+    except Exception as e:
+        print(f"Error parsing IFC file to PanelData: {e}")
+        raise
+
+
+def _extract_studs_data(wall, ifc_file) -> List[Stud]:
+    """Extract studs as Stud objects"""
+    studs = []
+    studs_raw = _extract_studs(wall, ifc_file)
+    
+    for stud in studs_raw:
+        studs.append(Stud(
+            stud_id=stud.get('stud_id', 'UNKNOWN'),
+            position_mm=float(stud.get('position_mm', 0)),
+            width_mm=float(stud.get('width_mm', 89)),
+            depth_mm=float(stud.get('depth_mm', 89))
+        ))
+    
+    return studs
+
+
+def _extract_openings_data(wall, ifc_file) -> List[Opening]:
+    """Extract openings as Opening objects"""
+    openings = []
+    openings_raw = _extract_openings(wall, ifc_file)
+    
+    for opening in openings_raw:
+        openings.append(Opening(
+            opening_id=opening.get('opening_id', 'UNKNOWN'),
+            opening_type=opening.get('type', 'window'),
+            position_mm=float(opening.get('position_mm', 0)),
+            width_mm=float(opening.get('width_mm', 900)),
+            height_mm=float(opening.get('height_mm', 1200)),
+            has_jack_studs=opening.get('has_jack_studs', False),
+            has_header=opening.get('has_header', False),
+            is_corner=opening.get('is_corner', False)
+        ))
+    
+    return openings
+
+
+def _extract_ducts_data(wall, ifc_file) -> List[Duct]:
+    """Extract ducts as Duct objects"""
+    ducts = []
+    ducts_raw = _extract_ducts(wall, ifc_file)
+    
+    for duct in ducts_raw:
+        ducts.append(Duct(
+            duct_id=duct.get('duct_id', 'UNKNOWN'),
+            position_mm=float(duct.get('position_mm', 0)),
+            diameter_mm=float(duct.get('diameter_mm', 150)),
+            clearance_from_stud_mm=float(duct.get('clearance_from_stud_mm', 30))
+        ))
+    
+    return ducts
+
+
+def _extract_seismic_zone(wall, ifc_file) -> int:
+    """Extract seismic zone from wall properties"""
+    try:
+        if hasattr(wall, 'IsDefinedBy'):
+            for definition in wall.IsDefinedBy:
+                if definition.is_a('IfcRelDefinesByProperties'):
+                    property_set = definition.RelatingPropertyDefinition
+                    if hasattr(property_set, 'HasProperties'):
+                        for prop in property_set.HasProperties:
+                            if hasattr(prop, 'Name') and 'seismic' in prop.Name.lower():
+                                return int(prop.NominalValue.wrappedValue)
+    except:
+        pass
+    
+    return 1  # Default to seismic zone 1
 
 
 def _extract_wall_panels(ifc_file) -> List[Dict[str, Any]]:
