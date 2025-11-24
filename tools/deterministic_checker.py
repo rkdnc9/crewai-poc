@@ -190,3 +190,39 @@ def run_deterministic_checks(panel: PanelData, rules: dict) -> DeterministicChec
         pass_fail=passed,
         summary=summary
     )
+
+
+def check_contextual_violations(panel: PanelData, exceptions: dict) -> List[DeterministicViolation]:
+    """Evaluate context-aware exceptions that typically required LLM reasoning."""
+    violations: List[DeterministicViolation] = []
+    context_rules = exceptions.get("context_aware_exceptions", []) if exceptions else []
+
+    for rule in context_rules:
+        name = rule.get("name", "").lower()
+        severity_value = rule.get("severity_boost", SeverityLevel.MEDIUM.value)
+        try:
+            severity = SeverityLevel(severity_value.lower())
+        except ValueError:
+            severity = SeverityLevel.MEDIUM
+
+        if "corner window" in name:
+            min_zone = rule.get("min_seismic_zone", 3)
+            for opening in panel.openings:
+                if opening.is_corner and panel.seismic_zone >= min_zone:
+                    reason = rule.get(
+                        "reason",
+                        "Corner openings in high seismic zones require additional lateral bracing"
+                    )
+                    violations.append(
+                        DeterministicViolation(
+                            violation_id=f"CONTEXT_{opening.opening_id}",
+                            rule_id=rule.get("rule_id", "CONTEXT_RULE"),
+                            element=opening.opening_id,
+                            violation_type="context",
+                            severity=severity,
+                            passed=False,
+                            reason=reason
+                        )
+                    )
+
+    return violations

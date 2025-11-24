@@ -63,8 +63,8 @@ def create_panel_visualization(
         all_violations.extend(llm_violations)
     has_violations = bool(all_violations)
     
-    # Calculate extra height needed for annotations (only for violations)
-    extra_height = 120 if has_violations else 60
+    # SVG height for clean diagram (no hardcoded annotations here - let SVG annotator handle it)
+    extra_height = 80
     
     # Start SVG
     svg_lines = [
@@ -129,39 +129,8 @@ def create_panel_visualization(
     dim_y2 = margin + height / 2
     svg_lines.append(f'  <text class="dimension" x="{dim_x2}" y="{dim_y2}" text-anchor="end" transform="rotate(-90 {dim_x2} {dim_y2})">{panel_data.height_mm:.0f}mm</text>')
     
-    # Add violation summary or clean status
-    if has_violations:
-        violation_y = margin + height + 50
-        svg_lines.append(f'  <text class="label" x="{margin + 10}" y="{violation_y}" fill="#C0392B">Violations Found:</text>')
-        
-        line_y = violation_y + 15
-        
-        # Deterministic violations
-        if det_result.violations:
-            svg_lines.append(f'  <text class="violation-text" x="{margin + 10}" y="{line_y}" font-weight="bold">Det:</text>')
-            for v in det_result.violations[:3]:
-                line_y += 12
-                reason = v.reason if hasattr(v, 'reason') else str(v)
-                svg_lines.append(f'  <text class="violation-text" x="{margin + 20}" y="{line_y}">• {reason[:45]}</text>')
-            if len(det_result.violations) > 3:
-                line_y += 12
-                svg_lines.append(f'  <text class="violation-text" x="{margin + 20}" y="{line_y}">... +{len(det_result.violations) - 3} more</text>')
-        
-        # LLM violations
-        if llm_violations:
-            line_y += 12
-            svg_lines.append(f'  <text class="violation-text" x="{margin + 10}" y="{line_y}" font-weight="bold">LLM:</text>')
-            for v in llm_violations[:3]:
-                line_y += 12
-                if isinstance(v, dict):
-                    reason = v.get('reason', v.get('description', 'Unknown'))
-                else:
-                    reason = str(v)
-                svg_lines.append(f'  <text class="violation-text" x="{margin + 20}" y="{line_y}">• {reason[:45]}</text>')
-            if len(llm_violations) > 3:
-                line_y += 12
-                svg_lines.append(f'  <text class="violation-text" x="{margin + 20}" y="{line_y}">... +{len(llm_violations) - 3} more</text>')
-    # No annotation for passes - keep it clean
+    # Annotations are now handled by svg_annotator.py via CrewAI
+    # This function generates clean base SVGs only (color-coded but no violation text)
     
     svg_lines.append('</svg>')
     

@@ -63,8 +63,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from crewai import Crew
-from tools.deterministic_checker import PanelData, Stud, Opening
-from tools.output_parser import extract_violations_from_output, merge_violations
+from tools.deterministic_checker import (
+    PanelData,
+    Stud,
+    Opening,
+    run_deterministic_checks,
+    check_contextual_violations
+)
 from crew.agents import (
     create_deterministic_checker_agent,
     create_llm_analyzer_agent,
@@ -232,11 +237,15 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     # Parse results from crew output
     # The crew's final output contains all findings
     crew_output = str(crew_result)
-    
-    # Extract violations from crew output for summary
-    det_violations = extract_violations_from_output(crew_output)
-    
-    # NOW create visualization with actual violations extracted from crew output
+
+    # Run deterministic + contextual checks locally for reliable visualization
+    det_result = run_deterministic_checks(panel, rules)
+    det_violations = [v.dict() for v in det_result.violations]
+    contextual_violations = check_contextual_violations(panel, exceptions)
+    contextual_violation_dicts = [v.dict() for v in contextual_violations]
+    combined_violations = det_violations + contextual_violation_dicts
+
+    # NOW create visualization with actual violations
     output_file = output_dir / f"{panel.panel_id.lower()}.svg"
     
     # Call visualization tool directly with extracted violations
@@ -244,16 +253,20 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     viz_result = visualization_tool(
         panel_dict,
         det_violations,
-        [],
+        contextual_violation_dicts,
         str(output_file)
     )
+    
+    # Use CrewAI to add annotations to the SVG
+    from tools.svg_annotator import annotate_svg_with_crew
+    annotated_svg_path = annotate_svg_with_crew(str(output_file), combined_violations)
     
     return {
         "panel_id": panel.panel_id,
         "panel_name": panel.name,
         "crew_output": crew_output,
-        "output_file": str(output_file),
-        "violations_found": len(det_violations)
+        "output_file": annotated_svg_path,
+        "violations_found": len(combined_violations)
     }
 
 
