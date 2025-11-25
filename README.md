@@ -46,12 +46,22 @@ export OPENAI_API_KEY="your-key-here"
 ### Running
 
 ```bash
-# Execute the workflow (generates SVGs in demo_output/)
-uv run scripts/demo.py
+# Execute the workflow (reads panels from IFC files, generates SVGs in demo_output/)
+uv run python scripts/demo.py
+
+# Regenerate test IFC files (if needed)
+uv run python scripts/generate_ifc_files.py
 
 # View remediation recommendations
 uv run python scripts/view_remediation.py demo_output/*_remediation.json
 ```
+
+### How It Works
+
+1. **IFC Input**: Demo reads wall panel data from `test_data/good_panel.ifc` and `test_data/bad_panel.ifc`
+2. **Parsing**: IFC parser extracts studs, openings, dimensions, and seismic zone info
+3. **Analysis**: CrewAI agents run deterministic checks and contextual analysis
+4. **Output**: Generates violation reports, remediation plans, and annotated SVG visualizations
 
 ## Key Features
 

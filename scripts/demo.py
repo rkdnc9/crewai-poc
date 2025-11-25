@@ -65,11 +65,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from crewai import Crew
 from tools.deterministic_checker import (
     PanelData,
-    Stud,
-    Opening,
     run_deterministic_checks,
     check_contextual_violations
 )
+from tools.ifc_parser_tool import parse_ifc_file_to_panel_data
 from crew.agents import (
     create_deterministic_checker_agent,
     create_llm_analyzer_agent,
@@ -84,77 +83,17 @@ from crew.tasks import (
 )
 
 
-def create_good_panel() -> PanelData:
-    """Create a good panel that passes all checks."""
-    studs = [
-        Stud(stud_id="S1", position_mm=0, width_mm=89, depth_mm=89),
-        Stud(stud_id="S2", position_mm=400, width_mm=89, depth_mm=89),
-        Stud(stud_id="S3", position_mm=800, width_mm=89, depth_mm=89),
-        Stud(stud_id="S4", position_mm=1200, width_mm=89, depth_mm=89),
-        Stud(stud_id="S5", position_mm=1600, width_mm=89, depth_mm=89),
-        Stud(stud_id="S6", position_mm=2000, width_mm=89, depth_mm=89),
-        Stud(stud_id="S7", position_mm=2400, width_mm=89, depth_mm=89),
-    ]
+def load_panel_from_ifc(ifc_path: str) -> PanelData:
+    """
+    Load panel data from IFC file.
     
-    openings = [
-        Opening(
-            opening_id="W1",
-            opening_type="window",
-            position_mm=1200,
-            width_mm=762,
-            height_mm=1200,
-            has_jack_studs=True,
-            has_header=True,
-            is_corner=False
-        )
-    ]
-    
-    return PanelData(
-        panel_id="GOOD_PANEL_001",
-        name="Good Panel - Centered Window, Low Seismic Zone",
-        width_mm=3660,
-        height_mm=2440,
-        studs=studs,
-        openings=openings,
-        ducts=[],
-        seismic_zone=1
-    )
-
-
-def create_bad_panel() -> PanelData:
-    """Create a bad panel that needs LLM analysis to catch contextual issues."""
-    studs = [
-        Stud(stud_id="S1", position_mm=0, width_mm=89, depth_mm=89),
-        Stud(stud_id="S2", position_mm=406, width_mm=89, depth_mm=89),
-        Stud(stud_id="S3", position_mm=812, width_mm=89, depth_mm=89),
-        Stud(stud_id="S4", position_mm=1218, width_mm=89, depth_mm=89),
-        Stud(stud_id="S5", position_mm=1624, width_mm=89, depth_mm=89),
-        Stud(stud_id="S6", position_mm=2030, width_mm=89, depth_mm=89),
-    ]
-    
-    openings = [
-        Opening(
-            opening_id="W1",
-            opening_type="window",
-            position_mm=50,
-            width_mm=762,
-            height_mm=1200,
-            has_jack_studs=False,
-            has_header=False,
-            is_corner=True
-        )
-    ]
-    
-    return PanelData(
-        panel_id="BAD_PANEL_001",
-        name="Bad Panel - Corner Window, High Seismic Zone",
-        width_mm=3660,
-        height_mm=2440,
-        studs=studs,
-        openings=openings,
-        ducts=[],
-        seismic_zone=4
-    )
+    Args:
+        ifc_path: Path to the IFC file
+        
+    Returns:
+        PanelData object parsed from IFC
+    """
+    return parse_ifc_file_to_panel_data(ifc_path)
 
 
 def panel_to_dict(panel: PanelData) -> dict:
@@ -192,7 +131,7 @@ def panel_to_dict(panel: PanelData) -> dict:
     }
 
 
-def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Path) -> dict:
+def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Path, ifc_filename: str = None) -> dict:
     """
     Run the complete QC workflow through CrewAI.
     
@@ -203,6 +142,7 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
         rules: Building code rules
         exceptions: Code exceptions
         output_dir: Directory for outputs
+        ifc_filename: Base name of IFC file (without extension) for output naming
         
     Returns:
         Dictionary with crew results
@@ -281,15 +221,18 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
         print(f"Note: Could not parse LLM recommendations from crew output: {e}")
     
     # Save LLM recommendations to JSON file ONLY if there are actual violations
+    # Use IFC filename for output naming, fallback to panel_id if not provided
+    file_prefix = ifc_filename if ifc_filename else panel.panel_id.lower()
+    
     recommendations_file = None
     if combined_violations and llm_recommendations:
-        recommendations_file = output_dir / f"{panel.panel_id.lower()}_remediation.json"
+        recommendations_file = output_dir / f"{file_prefix}_remediation.json"
         with open(recommendations_file, 'w', encoding='utf-8') as f:
             json.dump(llm_recommendations, f, indent=2)
         print(f"💾 Saved remediation recommendations to: {recommendations_file}")
 
     # NOW create visualization with actual violations
-    output_file = output_dir / f"{panel.panel_id.lower()}.svg"
+    output_file = output_dir / f"{file_prefix}.svg"
     
     # Call visualization tool directly with extracted violations
     from tools.crew_tools import visualization_tool
@@ -308,7 +251,7 @@ def run_qc_crew(panel: PanelData, rules: dict, exceptions: dict, output_dir: Pat
     fixed_svg_path = None
     if combined_violations and llm_recommendations and llm_recommendations.get('violations_with_remediation'):
         from tools.remediation_applier import create_fixed_visualization
-        fixed_output = output_dir / f"{panel.panel_id.lower()}_fixed.svg"
+        fixed_output = output_dir / f"{file_prefix}_fixed.svg"
         try:
             fixed_svg_path = create_fixed_visualization(
                 panel,
@@ -353,17 +296,39 @@ def demo():
     with open(exceptions_path) as f:
         exceptions = json.load(f)
     
-    # Test panels
-    panels = [
-        create_good_panel(),
-        create_bad_panel()
+    # Load panels from IFC files
+    test_data_dir = Path(__file__).parent.parent / "test_data"
+    ifc_files = [
+        test_data_dir / "good_panel.ifc",
+        test_data_dir / "bad_panel.ifc"
     ]
+    
+    panels = []
+    for ifc_file in ifc_files:
+        if ifc_file.exists():
+            try:
+                panel = load_panel_from_ifc(str(ifc_file))
+                panels.append((ifc_file, panel))  # Store tuple of (ifc_file, panel)
+                print(f"✅ Loaded panel from {ifc_file.name}: {panel.name}")
+            except Exception as e:
+                print(f"❌ Error loading {ifc_file.name}: {e}")
+        else:
+            print(f"⚠️  IFC file not found: {ifc_file}")
+    
+    if not panels:
+        print("\n❌ No panels loaded. Please generate IFC files first:")
+        print("   uv run python scripts/generate_ifc_files.py\n")
+        return
+    
+    print(f"\nLoaded {len(panels)} panels from IFC files\n")
     
     results = []
     
-    for panel in panels:
+    for ifc_file, panel in panels:
         try:
-            result = run_qc_crew(panel, rules, exceptions, output_dir)
+            # Extract filename without extension for output naming
+            ifc_basename = ifc_file.stem
+            result = run_qc_crew(panel, rules, exceptions, output_dir, ifc_basename)
             results.append(result)
             print(f"\n✅ Completed: {panel.name}")
             print(f"   Output: {result['output_file']}\n")
@@ -401,7 +366,7 @@ def demo():
     print("  open demo_output/*.svg")
     print("  cat demo_output/*_remediation.json")
     print("\nTo compare before/after:")
-    print("  open demo_output/bad_panel_001.svg demo_output/bad_panel_001_fixed.svg")
+    print("  open demo_output/bad_panel.svg demo_output/bad_panel_fixed.svg")
     print("="*70 + "\n")
 
 

@@ -331,10 +331,11 @@ def _extract_openings(wall, ifc_file) -> List[Dict[str, Any]]:
                 "width_mm": 900.0,
                 "height_mm": 1200.0,
                 "has_jack_studs": False,  # To be checked
-                "has_header": False       # To be checked
+                "has_header": False,      # To be checked
+                "is_corner": False        # Default
             }
 
-            # Try to determine if it's a door or window
+            # Try to determine if it's a door or window and extract properties
             try:
                 # Check if there's a related door or window
                 filled_by = ifc_file.get_inverse(opening)
@@ -345,6 +346,27 @@ def _extract_openings(wall, ifc_file) -> List[Dict[str, Any]]:
                             opening_data['type'] = 'door'
                         elif element.is_a('IfcWindow'):
                             opening_data['type'] = 'window'
+                        
+                        # Extract opening properties
+                        if hasattr(element, 'IsDefinedBy'):
+                            for definition in element.IsDefinedBy:
+                                if definition.is_a('IfcRelDefinesByProperties'):
+                                    property_set = definition.RelatingPropertyDefinition
+                                    if hasattr(property_set, 'HasProperties'):
+                                        for prop in property_set.HasProperties:
+                                            prop_name = prop.Name if hasattr(prop, 'Name') else ''
+                                            if prop_name == 'Position':
+                                                opening_data['position_mm'] = float(prop.NominalValue.wrappedValue)
+                                            elif prop_name == 'Width':
+                                                opening_data['width_mm'] = float(prop.NominalValue.wrappedValue)
+                                            elif prop_name == 'Height':
+                                                opening_data['height_mm'] = float(prop.NominalValue.wrappedValue)
+                                            elif prop_name == 'HasJackStuds':
+                                                opening_data['has_jack_studs'] = bool(prop.NominalValue.wrappedValue)
+                                            elif prop_name == 'HasHeader':
+                                                opening_data['has_header'] = bool(prop.NominalValue.wrappedValue)
+                                            elif prop_name == 'IsCorner':
+                                                opening_data['is_corner'] = bool(prop.NominalValue.wrappedValue)
             except:
                 pass
 
